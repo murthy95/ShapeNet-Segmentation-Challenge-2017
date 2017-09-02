@@ -1,7 +1,7 @@
 import glob
 import os
 import numpy as np
-from visualize import read_labels
+from kd_helpers import read_labels
 
 # Checking the number of points in each model
 
