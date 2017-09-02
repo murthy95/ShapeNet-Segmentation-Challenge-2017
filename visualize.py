@@ -47,29 +47,11 @@ if len(sys.argv)>1:
 
     fig = plt.figure()
     ax = fig.add_subplot(111,projection='3d')
-    colors = ['b','r','g','y']
+    colors = {1:'red', 2:'green', 3:'blue', 4:'cyan', 5:'black', 6:'yellow'}
     markers = ['o','^','+','x']
     xs, ys, zs = pts[:,0],pts[:,1],pts[:,2]
-    for i in range(num_parts):
-        indices = np.where(labels==i+1)
-        ax.scatter(xs[indices],ys[indices],zs[indices],color=colors[i],marker='o')
+    for i in np.unique(labels):
+        indices = np.where(labels==i)
+        ax.scatter(xs[indices],ys[indices],zs[indices],color=colors[i],marker='.')
     plt.show()
     exit()
-
-# loc_of_label  = 9 # change this based on depth of directory where ModelNet data is stored
-#
-# flist_mn10test = [line.rstrip('\n') for line in open('test10.txt')]
-# MNET10_test = []
-# MNET10_test_orients = []
-# MNET10_test_labels = []
-# for model in flist_mn10test:
-#     tree = create_kd_tree(model)
-#     MNET10_test.append(tree[0])
-#     MNET10_test_orients.append(tree[1])
-#     label = model.split('/')[loc_of_label]
-#     MNET10_test_labels.append(LABELS_DICT[label])
-#
-#
-# np.save('mnet10_test.npy',np.array(MNET10_test))
-# np.save('mnet10_test_orients.npy',np.array(MNET10_test_orients))
-# np.save('mnet10_test_labels.npy',np.array(MNET10_test_labels))
