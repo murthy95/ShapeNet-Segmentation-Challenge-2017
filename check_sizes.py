@@ -1,11 +1,10 @@
 import glob
-import os
 import numpy as np
 from kd_helpers import read_labels
 
 # Checking the number of points in each model
 
-for main_folder in ["./train_data/*","./val_data/*","./test_data/*"]:
+for main_folder in ["./data/train_data/*","./data/val_data/*","./data/test_data/*"]:
     print(main_folder)
     folders = glob.glob(main_folder)
     model_files = []
@@ -22,10 +21,9 @@ for main_folder in ["./train_data/*","./val_data/*","./test_data/*"]:
     print(len(model_files))
 
 
-
 # Checking the number of parts in each class
 
-folders = glob.glob("./train_label/*")
+folders = glob.glob("./data/train_label/*")
 for folder in folders:
     label_files = glob.glob(folder + '/*')
     print(folder)

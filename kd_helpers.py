@@ -14,16 +14,46 @@ def read_labels(fname):
         data = myfile.readlines()
     return np.loadtxt(data).reshape((len(data),1))
 
+# encodes the split directions, weighted by the tree depth at which the splits happened
+def create_split_dir_layer(orients,num_pts):
+    depth_factor = {1024:9,2048:10,4096:11}[num_pts]
+    split_dirs = np.zeros((num_pts,3))
+    count = 0
+    loc_offset = int(num_pts/2)
+    locations = [loc_offset]
+    while(count<num_pts-1):
+        temp_locations = []
+        for loc in locations:
+            # split direction
+            xyz = int(orients[count])
+            # writing the split direction onto split_dirs
+            split_dirs[loc-loc_offset:loc,xyz] -= 2**depth_factor
+            split_dirs[loc:loc+loc_offset,xyz] += 2**depth_factor
+            #preparing the next locations
+            temp_locations.append(loc-int(loc_offset/2))
+            temp_locations.append(loc+int(loc_offset/2))
+            count += 1
+        locations.clear()
+        locations.extend(temp_locations)
+        loc_offset = int(loc_offset/2)
+        depth_factor -= 1
+    return split_dirs
+
+
 def create_kd_tree(pts):
     # to keep track of which points the leaves correspond to
     inds = np.array(range(len(pts)))
     ind_nodes = [inds]
-    # find the kd-tree leafs
+
+    # the orientations also give useful information
     kd_orients = []
-    nodes = [pts]
+
      # 'nodes' would be sets of points, whose size reduces as the loop runs, ultimately having leaves
-    child_list = []  # this will store the 'children' for an iteration, and replace node after the iteration
+    nodes = [pts]
+    # this will store the 'children' for an iteration, and replace node after the iteration
+    child_list = []
     ind_child_list = []
+
     while len(nodes[0]) != 1:
         child_list.clear()
         ind_child_list.clear()
@@ -57,4 +87,5 @@ def create_kd_tree(pts):
     kd_orients = np.array(kd_orients)
     kd_inds = np.array(ind_nodes).reshape((len(ind_nodes),))
     # return (kd_leaves,kd_orients)
-    return kd_leaves,kd_inds
+    split_dirs = create_split_dir_layer(kd_orients,len(kd_leaves))
+    return np.dstack((kd_leaves,split_dirs)),kd_inds

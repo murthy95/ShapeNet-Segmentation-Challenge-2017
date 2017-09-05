@@ -8,6 +8,8 @@ if len(sys.argv)>1:
     pts = read_pts(sys.argv[1])
     labels = read_labels(sys.argv[2])
     kd_leaves,kd_inds = create_kd_tree(pts)
+    # it returns two layers, only first has points
+    kd_leaves = kd_leaves[:,:,0].reshape((len(kd_inds),3))
 
     p1_x = []
     p1_y = []
