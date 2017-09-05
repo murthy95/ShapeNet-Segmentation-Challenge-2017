@@ -1,6 +1,4 @@
 '''
-Add check to ensure correspondence of labels and data
-
 To-do : If points <=1024, add random noise
 for points >2048, split into two
 
@@ -29,6 +27,10 @@ class_names = {
 "04225987":"Skateboard_04225987",
 "04379243":"Table_04379243"}
 
+INP_SZ_1 = 1024
+INP_SZ_2 = 2048
+INP_SZ_3 = 4096
+
 def get_fname(folder_name,suffix):
     global class_names
     words = folder_name.split('/')
@@ -44,6 +46,29 @@ def check_file_equality(f1,f2):
     f2_split = f1.split('/')
     return (f1_split[len(f1_split)-1].split('.'))[0] == (f2_split[len(f2_split)-1].split('.'))[0]
 
+def augment_kd(kd_leaves,kd_inds):
+    if len(kd_leaves) == INP_SZ_2:
+        return [kd_leaves],[kd_inds]
+    elif len(kd_leaves) == INP_SZ_1:
+        kdl_rand = kd_leaves + np.random.randn(INP_SZ_1,3)
+        ind_set1 = [int(f) for f in list(np.linspace(0,INP_SZ_2 - 2,INP_SZ_1))]
+        ind_set2 = [int(f) for f in list(np.linspace(1,INP_SZ_2 - 1,INP_SZ_1))]
+        aug_kdl = np.zeros((INP_SZ_2,3,2))
+        aug_kdi = np.zeros((INP_SZ_2,3))
+        aug_kdl[ind_set1] = kd_leaves
+        aug_kdl[ind_set2] = kdl_rand
+        aug_kdi[ind_set1] = kd_inds
+        aug_kdi[ind_set2] = kd_inds
+        return [aug_kdl],[aug_kdi]
+    else:
+        ind_set1 = [int(f) for f in list(np.linspace(0,INP_SZ_3 - 2,INP_SZ_1))]
+        ind_set2 = [int(f) for f in list(np.linspace(1,INP_SZ_3 - 1,INP_SZ_1))]
+        kdl1 = kd_leaves[ind_set1]
+        kdl2 = kd_leaves[ind_set2]
+        kdi1 = kd_inds[ind_set1]
+        kdi2 = kd_inds[ind_set2]
+        return [kdl1,kdl2],[kdi1,kdi2]
+
 # Collecting all of the data
 data_folders = ["./data/train_data/*","./data/val_data/*","./data/test_data/*"]
 label_folders = ["./data/train_label/*","./data/val_label/*"]
@@ -54,12 +79,14 @@ label_fnames = ["y_train.npy","y_val.npy"]
 print("Processing data..")
 
 for i in range(2):  #iterating over train, val
+
     main_data_folder = data_folders[i]
     main_label_folder = label_folders[i]
     data_classes = glob.glob(main_data_folder)
     label_classes = glob.glob(main_label_folder)
     for data_class,label_class in zip(data_classes,label_classes):
-        if(!check_class_equality(data_class,label_class)):
+        print(data_class)
+        if(check_class_equality(data_class,label_class) != True):
             print("Glob picks up in different order. Re-write code!")
             exit()
         model_files = glob.glob(data_class + '/*')
@@ -68,28 +95,39 @@ for i in range(2):  #iterating over train, val
         ind_maps = []
         labels = []
         for model_file,label_file in zip(model_files,label_files):
-            if(!check_file_equality(model_file,label_file))
+            print(model_file)
+            if(check_file_equality(model_file,label_file) != True):
+                print("Glob picks up in different order. Re-write code!")
+                exit()
             pts = read_pts(model_file)
+            lbls = read_labels(label_file)
             kd_leaves,kd_inds = create_kd_tree(pts)
-            data.append(kd_leaves)
-            ind_maps.append(kd_inds)
+            kdls,kdis = augment_kd(kd_leaves,kd_inds)
+            for kdl,kdi in zip(kdls,kdis):
+                data.append(kdl)
+                ind_maps.append(kdi)
+            labels.append(lbls)
         np.save(get_fname(data_class,data_fnames[i]),data)
         np.save(get_fname(data_class,ind_map_fnames[i]),ind_maps)
+        np.save(get_fname(label_class,label_fnames[i]),labels)
 
 
 # Processing the test set (only points)
-test_folder = data_folders[i]
+print("Processing test data...")
+test_folder = data_folders[2]
 data_classes = glob.glob(test_folder)
 for data_class in data_classes:
+    print(data_class)
     model_files = glob.glob(data_class + '/*')
     data = []
     ind_maps = []
     for model_file in model_files:
+        print(model_file)
         pts = read_pts(model_file)
         kd_leaves,kd_inds = create_kd_tree(pts)
-        data.append(kd_leaves)
-        ind_maps.append(kd_inds)
-        np.save(get_fname(data_class,data_fnames[2]),labels)
-        np.save(get_fname(data_class,ind_map_fnames[2]),ind_maps)
-
-        
+        kdl,kdi = augment_kd(kd_leaves,kd_inds)
+        for l,i in zip(kdl,kdi):
+            data.append(l)
+            ind_maps.append(i)
+    np.save(get_fname(data_class,data_fnames[2]),data)
+    np.save(get_fname(data_class,ind_map_fnames[2]),ind_maps)
