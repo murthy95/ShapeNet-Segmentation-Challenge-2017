@@ -39,12 +39,12 @@ def get_fname(folder_name,suffix):
 
 def check_class_equality(c1,c2):
     c1_split = c1.split('/')
-    c2_split = c1.split('/')
+    c2_split = c2.split('/')
     return c1_split[len(c1_split)-1] == c2_split[len(c2_split)-1]
 
 def check_file_equality(f1,f2):
     f1_split = f1.split('/')
-    f2_split = f1.split('/')
+    f2_split = f2.split('/')
     return (f1_split[len(f1_split)-1].split('.'))[0] == (f2_split[len(f2_split)-1].split('.'))[0]
 
 def augment_kd(kd_leaves,kd_inds):
@@ -87,8 +87,8 @@ for i in range(2):  #iterating over train, val
 
     main_data_folder = data_folders[i]
     main_label_folder = label_folders[i]
-    data_classes = glob.glob(main_data_folder)
-    label_classes = glob.glob(main_label_folder)
+    data_classes = sorted(glob.glob(main_data_folder))
+    label_classes = sorted(glob.glob(main_label_folder))
     for data_class,label_class in zip(data_classes,label_classes):
         print(data_class)
         if os.path.exists(get_fname(data_class,data_fnames[i])):
@@ -96,8 +96,8 @@ for i in range(2):  #iterating over train, val
         if(check_class_equality(data_class,label_class) != True):
             print("Glob picks up in different order. Re-write code!")
             exit()
-        model_files = glob.glob(data_class + '/*')
-        label_files = glob.glob(label_class + '/*')
+        model_files = sorted(glob.glob(data_class + '/*'))
+        label_files = sorted(glob.glob(label_class + '/*'))
         data = []
         ind_maps = []
         labels = []
@@ -110,10 +110,15 @@ for i in range(2):  #iterating over train, val
             lbls = read_labels(label_file)
             kd_leaves,kd_inds = create_kd_tree(pts)
             kdls,kdis = augment_kd(kd_leaves,kd_inds)
+            print(model_file)
+            print(label_file)
+            print('size of pts: ' + str(len(pts)))
+            print('max. ind : '+str(len(lbls)))
             for kdl,kdi in zip(kdls,kdis):
                 data.append(kdl)
                 ind_maps.append(kdi)
-            labels.append(lbls)
+                inds_for_lbls = [int(f) for f in kdi]
+                labels.append(lbls[inds_for_lbls])
         np.save(get_fname(data_class,data_fnames[i]),data)
         np.save(get_fname(data_class,ind_map_fnames[i]),ind_maps)
         np.save(get_fname(label_class,label_fnames[i]),labels)
@@ -122,10 +127,10 @@ for i in range(2):  #iterating over train, val
 # Processing the test set (only points)
 print("Processing test data...")
 test_folder = data_folders[2]
-data_classes = glob.glob(test_folder)
+data_classes = sorted(glob.glob(test_folder))
 for data_class in data_classes:
     print(data_class)
-    model_files = glob.glob(data_class + '/*')
+    model_files = sorted(glob.glob(data_class + '/*'))
     data = []
     ind_maps = []
     for model_file in model_files:
