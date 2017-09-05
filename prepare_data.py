@@ -8,6 +8,7 @@ in both cases, make sure the labels and indices are also taken care
 from kd_helpers import *
 import glob
 import numpy as np
+import os
 
 class_names = {
 "02691156":"Airplane_02691156",
@@ -50,11 +51,15 @@ def augment_kd(kd_leaves,kd_inds):
     if len(kd_leaves) == INP_SZ_2:
         return [kd_leaves],[kd_inds]
     elif len(kd_leaves) == INP_SZ_1:
-        kdl_rand = kd_leaves + np.random.randn(INP_SZ_1,3)
+        kdl_rand = np.zeros(np.shape(kd_leaves))
+        # add random noise to point coordinates
+        kdl_rand[:,:,0] = kd_leaves[:,:,0] + np.random.randn(INP_SZ_1,3)
+        # use the same split information
+        kdl_rand[:,:,1] = kd_leaves[:,:,1]
         ind_set1 = [int(f) for f in list(np.linspace(0,INP_SZ_2 - 2,INP_SZ_1))]
         ind_set2 = [int(f) for f in list(np.linspace(1,INP_SZ_2 - 1,INP_SZ_1))]
         aug_kdl = np.zeros((INP_SZ_2,3,2))
-        aug_kdi = np.zeros((INP_SZ_2,3))
+        aug_kdi = np.zeros(INP_SZ_2)
         aug_kdl[ind_set1] = kd_leaves
         aug_kdl[ind_set2] = kdl_rand
         aug_kdi[ind_set1] = kd_inds
@@ -86,6 +91,8 @@ for i in range(2):  #iterating over train, val
     label_classes = glob.glob(main_label_folder)
     for data_class,label_class in zip(data_classes,label_classes):
         print(data_class)
+        if os.path.exists(get_fname(data_class,data_fnames[i])):
+            continue
         if(check_class_equality(data_class,label_class) != True):
             print("Glob picks up in different order. Re-write code!")
             exit()
