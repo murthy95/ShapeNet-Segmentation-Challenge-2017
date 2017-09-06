@@ -17,4 +17,6 @@ def cross_entropy(y_true, y_predicted): #ytrue of size nx1 and y_predicted of si
     y_predicted = np.argmax(y_predicted, axis=2)
         return categorical_crossentropy(y_true, y_predicted)
 
-input_ = In
+n =2048
+input_ = Input(shape=(n,3,2))
+a1 =
