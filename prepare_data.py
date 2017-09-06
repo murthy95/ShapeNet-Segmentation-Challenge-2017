@@ -66,8 +66,8 @@ def augment_kd(kd_leaves,kd_inds):
         aug_kdi[ind_set2] = kd_inds
         return [aug_kdl],[aug_kdi]
     else:
-        ind_set1 = [int(f) for f in list(np.linspace(0,INP_SZ_3 - 2,INP_SZ_1))]
-        ind_set2 = [int(f) for f in list(np.linspace(1,INP_SZ_3 - 1,INP_SZ_1))]
+        ind_set1 = [int(f) for f in list(np.linspace(0,INP_SZ_3 - 2,INP_SZ_2))]
+        ind_set2 = [int(f) for f in list(np.linspace(1,INP_SZ_3 - 1,INP_SZ_2))]
         kdl1 = kd_leaves[ind_set1]
         kdl2 = kd_leaves[ind_set2]
         kdi1 = kd_inds[ind_set1]
@@ -109,7 +109,9 @@ for i in range(2):  #iterating over train, val
             pts = read_pts(model_file)
             lbls = read_labels(label_file)
             kd_leaves,kd_inds = create_kd_tree(pts)
+            print('size kdl :' + str(len(kd_leaves)))
             kdls,kdis = augment_kd(kd_leaves,kd_inds)
+            print('size kdl :' + str(len(kdls[0])))
             print(model_file)
             print(label_file)
             print('size of pts: ' + str(len(pts)))
