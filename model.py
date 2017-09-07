@@ -168,7 +168,7 @@ class myUnet(object):
 
 		model = Model(input = inputs, output = conv11)
 
-		model.compile(optimizer = Adam(lr = 1e-4), loss = 'categorical_crossentropy', metrics = ['accuracy'])
+		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy'])
 
 		return model
 
@@ -181,12 +181,12 @@ class myUnet(object):
 		x_train, y_train, x_val, y_val = self.load_data()
 		print("loading data done")
 		model = self.get_unet()
-		# model.load_weights('unet.hdf5')
+		model.load_weights('unet.hdf5')
 		print("got unet")
 
 		model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
 		print('Fitting model...')
-		model.fit(x_train, y_train, batch_size=32, epochs=20, verbose=1, shuffle=True, callbacks=[model_checkpoint])
+		model.fit(x_train, y_train, batch_size=32, epochs=50, verbose=1, shuffle=True, callbacks=[model_checkpoint])
 
 		print('predict test data')
 		val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
