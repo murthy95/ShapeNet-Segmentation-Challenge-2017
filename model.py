@@ -86,20 +86,20 @@ class myUnet(object):
 		print "conv4 shape:",conv4.shape
 		conv4 = Conv2D(512, (3,1), activation = 'relu', padding = 'valid', kernel_initializer = 'glorot_normal')(conv4)
 		print "conv4 shape:",conv4.shape
-		# drop4 = Dropout(0.5)(conv4)
-		crop4 = Cropping2D(cropping=((16,16),(0,0)))(conv4)
+		drop4 = Dropout(0.5)(conv4)
+		crop4 = Cropping2D(cropping=((16,16),(0,0)))(drop4)
 		print "crop4 shape:",crop4.shape
-		pool4 = MaxPooling2D(pool_size=(2,1))(conv4)
+		pool4 = MaxPooling2D(pool_size=(2,1))(drop4)
 		print "pool4 shape:",pool4.shape
 
 		conv5 = Conv2D(1024, (3,1), activation = 'relu', padding = 'valid', kernel_initializer = 'glorot_normal')(pool4)
 		print "conv5 shape:",conv5.shape
 		conv5 = Conv2D(1024, (3,1), activation = 'relu', padding = 'valid', kernel_initializer = 'glorot_normal')(conv5)
 		print "conv5 shape:",conv5.shape
-		# drop5 = Dropout(0.5)(conv5)
-		crop5 = Cropping2D(cropping=((4,4),(0,0)))(conv5)
+		drop5 = Dropout(0.5)(conv5)
+		crop5 = Cropping2D(cropping=((4,4),(0,0)))(drop5)
 		print "crop5 shape:",crop5.shape
-		pool5 = MaxPooling2D(pool_size=(2,1))(conv5)
+		pool5 = MaxPooling2D(pool_size=(2,1))(drop5)
 		print "pool5 shape:",pool5.shape
 
 
@@ -109,10 +109,10 @@ class myUnet(object):
 		print "conv6 shape:",conv6.shape
 		# conv6 = Conv2D(2048, (3,1), activation = 'relu', padding = 'valid', kernel_initializer = 'glorot_normal')(conv6)
 		# print "conv6 shape:",conv6.shape
-		# drop6 = Dropout(0.5)(conv6)
+		drop6 = Dropout(0.5)(conv6)
 
 
-		up7 = Conv2D(1024, (1,1), activation = 'relu', padding = 'valid', kernel_initializer = 'glorot_normal')(UpSampling2D(size = (2,1))(conv6))
+		up7 = Conv2D(1024, (1,1), activation = 'relu', padding = 'valid', kernel_initializer = 'glorot_normal')(UpSampling2D(size = (2,1))(drop6))
 		print "up7 shape:",up7.shape
 		merge7 = merge([crop5,up7], mode = 'concat', concat_axis = 3)
 		print "merge7 shape:",merge7.shape
@@ -181,15 +181,17 @@ class myUnet(object):
 		x_train, y_train, x_val, y_val = self.load_data()
 		print("loading data done")
 		model = self.get_unet()
+		# model.load_weights('unet.hdf5')
 		print("got unet")
 
 		model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
 		print('Fitting model...')
-		model.fit(x_train, y_train, batch_size=1, nb_epoch=10, verbose=1, shuffle=True, callbacks=[model_checkpoint])
+		model.fit(x_train, y_train, batch_size=32, epochs=20, verbose=1, shuffle=True, callbacks=[model_checkpoint])
 
 		print('predict test data')
-		y_test_pred = model.predict(x_val, batch_size=1, verbose=1)
-		print(categorical_accuracy(y_test, y_test_pred))
+		val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
+
+		print val_score
 		# np.save('imgs_mask_test.npy', imgs_mask_test)
 
 
