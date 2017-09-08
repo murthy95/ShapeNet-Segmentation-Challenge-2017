@@ -10,7 +10,8 @@ from keras.metrics import categorical_accuracy
 from keras.activations import softmax
 from keras import backend as K
 from keras.layers.normalization import BatchNormalization
-
+import glob
+import tensorflow as tf
 
 class myUnet(object):
 
@@ -216,7 +217,7 @@ class myUnet(object):
 
 		model = Model(input = inputs, output = conv11)
 
-		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy'])
+		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy',mean_IoU])
 
 		return model
 
@@ -234,7 +235,7 @@ class myUnet(object):
 
 		model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
 		print('Fitting model...')
-		model.fit(x_train, y_train, batch_size=2, epochs=50, verbose=1, shuffle=True, callbacks=[model_checkpoint])
+		model.fit(x_train, y_train, batch_size=32, epochs=100, verbose=1, shuffle=True, callbacks=[model_checkpoint])
 
 		print('predict test data')
 		val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
@@ -242,7 +243,42 @@ class myUnet(object):
 		print val_score
 		# np.save('imgs_mask_test.npy', imgs_mask_test)
 
+def prepare_seg_path(original_path):
+	path_segs = original_path.split('.')
+	return '.' + path_segs[1] + '.psg'
+
+def mean_IoU(y_true, y_pred):
+	y_pred = K.argmax(y_pred,axis=2)
+	y_true = K.argmax(y_true,axis=2)
+	score, up_opt = tf.metrics.mean_iou(K.flatten(y_true), K.flatten(y_pred), 6)
+	K.get_session().run(tf.local_variables_initializer())
+	with tf.control_dependencies([up_opt]):
+		score = tf.identity(score)
+	return score
 
 if __name__ == '__main__':
 	myunet = myUnet()
 	myunet.train()
+
+	# P = myunet.predict()
+	#
+	# indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
+	# count = 0
+	#
+	# flists = sorted(glob.glob('./data/val_data/03790512/*'))
+	# for val_file in flists:
+	# 	print(val_file)
+	# 	with open(val_file,'r') as myfile:
+	# 		num_pts = len(myfile.readlines())
+	# 	seg_data = np.zeros((num_pts,6))
+	# 	num_exs = 1
+	# 	if num_pts>2048:
+	# 		num_exs = 2
+	# 	for i in range(num_exs):
+	# 		ind = indices[count]
+	# 		prediction = P[count]
+	# 		for j in range(2048):
+	# 			seg_data[ind[j]] += prediction[j]
+	# 		count += 1
+	# 	seg_file = prepare_seg_path(val_file)
+	# 	np.savetxt(seg_file,np.argmax(seg_data,axis=1) + 1,fmt='%1.f')
