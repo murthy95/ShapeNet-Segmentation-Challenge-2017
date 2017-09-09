@@ -217,7 +217,7 @@ class myUnet(object):
 
 		model = Model(input = inputs, output = conv11)
 
-		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy',mean_IoU])
+		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy'])
 
 		return model
 
@@ -230,22 +230,63 @@ class myUnet(object):
 		x_train, y_train, x_val, y_val = self.load_data()
 		print("loading data done")
 		model = self.get_unet()
-		# model.load_weights('unet.hdf5')
+		model.load_weights('unet.hdf5')
 		print("got unet")
 
 		model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
 		print('Fitting model...')
-		model.fit(x_train, y_train, batch_size=32, epochs=100, verbose=1, shuffle=True, callbacks=[model_checkpoint])
+		model.fit(x_train, y_train, batch_size=32, epochs=3, verbose=1, shuffle=True, callbacks=[model_checkpoint])
 
-		print('predict test data')
-		val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
-
-		print val_score
+		# print('predict test data')
+		# val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
+		#
+		# print val_score
 		# np.save('imgs_mask_test.npy', imgs_mask_test)
+
+		P = model.predict(x_val, batch_size = 1, verbose = 0)
+		indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
+		count = 0
+
+		flists = sorted(glob.glob('./data/val_label/03790512/*'))
+		IoU_sum = 0
+		for val_file in flists:
+			# print(val_file)
+			with open(val_file,'r') as myfile:
+				gt = np.loadtxt(myfile.readlines())
+			num_pts = len(gt)
+			seg_data = np.zeros((num_pts,6))
+			num_exs = 1
+			if num_pts>2048:
+				num_exs = 2
+			for i in range(num_exs):
+				ind = indices[count]
+				prediction = P[count]
+				for j in range(2048):
+					seg_data[ind[j]] += prediction[j]
+				count += 1
+
+			seg_pred = np.argmax(seg_data,axis=1) + 1
+			IoU_sum = IoU_sum +  IoU(gt,seg_pred)
+			# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
+		print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
+
+
+	# def predict(self):
+	# 	print("loading data")
+	# 	x_train, y_train, x_val, y_val = self.load_data()
+	# 	print("loading data done")
+	# 	model = self.get_unet()
+	# 	print("got unet")
+	# 	model.load_weights('unet.hdf5')
+	# 	print("loaded weights")
+	# 	predictions = model.predict(x_val, batch_size = 1)
+	# 	return predictions
+
 
 def prepare_seg_path(original_path):
 	path_segs = original_path.split('.')
-	return '.' + path_segs[1] + '.psg'
+	path_segs = path_segs[1].split('/')
+	return './temp_segs/' + path_segs[len(path_segs)-1] + '.seg'
 
 def mean_IoU(y_true, y_pred):
 	y_pred = K.argmax(y_pred,axis=2)
@@ -256,29 +297,51 @@ def mean_IoU(y_true, y_pred):
 		score = tf.identity(score)
 	return score
 
+def IoU(gt_seg,pred_seg):
+	tp, fp, fn = np.zeros(6), np.zeros(6), np.zeros(6)
+	for i in range(6):
+		pred_true_inds = np.where(pred_seg == (i+1))[0]
+		pred_false_inds = np.where(pred_seg != (i+1))[0]
+		# print(gt_seg[pred_true_inds])
+		tp[i] = len(np.where(gt_seg[pred_true_inds] == (i+1) )[0])
+		fp[i] = len(pred_true_inds) - tp[i]
+		fn[i] = len(np.where(gt_seg[pred_false_inds] == (i+1) )[0])
+	# print(tp)
+	# print(fp)
+	# print(fn)
+	denom = (tp + fp + fn)
+	iou = tp / denom
+	iou[np.where(denom == 0)[0]]  = 0
+	# print(iou)
+	return sum(iou)/6
+
+
 if __name__ == '__main__':
 	myunet = myUnet()
-	myunet.train()
+	for j in range(1):
+		myunet.train()
 
-	# P = myunet.predict()
-	#
-	# indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
-	# count = 0
-	#
-	# flists = sorted(glob.glob('./data/val_data/03790512/*'))
-	# for val_file in flists:
-	# 	print(val_file)
-	# 	with open(val_file,'r') as myfile:
-	# 		num_pts = len(myfile.readlines())
-	# 	seg_data = np.zeros((num_pts,6))
-	# 	num_exs = 1
-	# 	if num_pts>2048:
-	# 		num_exs = 2
-	# 	for i in range(num_exs):
-	# 		ind = indices[count]
-	# 		prediction = P[count]
-	# 		for j in range(2048):
-	# 			seg_data[ind[j]] += prediction[j]
-	# 		count += 1
-	# 	seg_file = prepare_seg_path(val_file)
-	# 	np.savetxt(seg_file,np.argmax(seg_data,axis=1) + 1,fmt='%1.f')
+
+
+		# P = myunet.predict()
+		#
+		# indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
+		# count = 0
+		#
+		# flists = sorted(glob.glob('./data/val_data/03790512/*'))
+		# for val_file in flists:
+		# 	print(val_file)
+		# 	with open(val_file,'r') as myfile:
+		# 		num_pts = len(myfile.readlines())
+		# 	seg_data = np.zeros((num_pts,6))
+		# 	num_exs = 1
+		# 	if num_pts>2048:
+		# 		num_exs = 2
+		# 	for i in range(num_exs):
+		# 		ind = indices[count]
+		# 		prediction = P[count]
+		# 		for j in range(2048):
+		# 			seg_data[ind[j]] += prediction[j]
+		# 		count += 1
+		# 	seg_file = prepare_seg_path(val_file)
+		# 	np.savetxt(seg_file,np.argmax(seg_data,axis=1) + 1,fmt='%1.f')
