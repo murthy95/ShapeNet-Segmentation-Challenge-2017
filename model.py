@@ -230,45 +230,49 @@ class myUnet(object):
 		x_train, y_train, x_val, y_val = self.load_data()
 		print("loading data done")
 		model = self.get_unet()
-		model.load_weights('unet.hdf5')
-		print("got unet")
+
 
 		model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
 		print('Fitting model...')
-		model.fit(x_train, y_train, batch_size=32, epochs=3, verbose=1, shuffle=True, callbacks=[model_checkpoint])
 
-		# print('predict test data')
-		# val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
-		#
-		# print val_score
-		# np.save('imgs_mask_test.npy', imgs_mask_test)
+		for j in range(100):
+			model.load_weights('unet.hdf5')
+			print("got unet")
+			model.fit(x_train, y_train, batch_size=16, epochs=1, verbose=1, validation_data = (x_val,y_val), shuffle=True, callbacks=[model_checkpoint])
 
-		P = model.predict(x_val, batch_size = 1, verbose = 0)
-		indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
-		count = 0
+			# print('predict test data')
+			# val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
+			#
+			# print val_score
+			# np.save('imgs_mask_test.npy', imgs_mask_test)
 
-		flists = sorted(glob.glob('./data/val_label/03790512/*'))
-		IoU_sum = 0
-		for val_file in flists:
-			# print(val_file)
-			with open(val_file,'r') as myfile:
-				gt = np.loadtxt(myfile.readlines())
-			num_pts = len(gt)
-			seg_data = np.zeros((num_pts,6))
-			num_exs = 1
-			if num_pts>2048:
-				num_exs = 2
-			for i in range(num_exs):
-				ind = indices[count]
-				prediction = P[count]
-				for j in range(2048):
-					seg_data[ind[j]] += prediction[j]
-				count += 1
+			print('!!!!!!!!!!!!! Calculating mean IoU !!!!!!!!!!!!')
+			P = model.predict(x_val, verbose = 0)
+			indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
+			count = 0
 
-			seg_pred = np.argmax(seg_data,axis=1) + 1
-			IoU_sum = IoU_sum +  IoU(gt,seg_pred)
-			# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
-		print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
+			flists = sorted(glob.glob('./data/val_label/03790512/*'))
+			IoU_sum = 0
+			for val_file in flists:
+				# print(val_file)
+				with open(val_file,'r') as myfile:
+					gt = np.loadtxt(myfile.readlines())
+				num_pts = len(gt)
+				seg_data = np.zeros((num_pts,6))
+				num_exs = 1
+				if num_pts>2048:
+					num_exs = 2
+				for i in range(num_exs):
+					ind = indices[count]
+					prediction = P[count]
+					for j in range(2048):
+						seg_data[ind[j]] += prediction[j]
+					count += 1
+
+				seg_pred = np.argmax(seg_data,axis=1) + 1
+				IoU_sum = IoU_sum +  IoU(gt,seg_pred)
+				# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
+			print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
 
 
 	# def predict(self):
@@ -318,8 +322,7 @@ def IoU(gt_seg,pred_seg):
 
 if __name__ == '__main__':
 	myunet = myUnet()
-	for j in range(1):
-		myunet.train()
+	myunet.train()
 
 
 
