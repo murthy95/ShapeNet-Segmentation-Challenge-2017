@@ -1,4 +1,5 @@
 import numpy as np
+from keras import callbacks
 from keras import utils
 from keras.models import *
 from keras.layers import Input, merge, Conv2D, MaxPooling2D, AveragePooling2D, UpSampling2D, Dropout, Cropping2D, Activation
@@ -12,6 +13,7 @@ from keras import backend as K
 from keras.layers.normalization import BatchNormalization
 import glob
 import tensorflow as tf
+import os
 
 class myUnet(object):
 
@@ -224,6 +226,8 @@ class myUnet(object):
 	def softmax_(self,x):
 		return softmax(x,axis=2)
 
+
+
 	def train(self):
 
 		print("loading data")
@@ -232,22 +236,52 @@ class myUnet(object):
 		model = self.get_unet()
 
 
-		model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
+		# model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
 		print('Fitting model...')
 
-		for j in range(100):
-			model.load_weights('unet.hdf5')
-			print("got unet")
-			model.fit(x_train, y_train, batch_size=16, epochs=1, verbose=1, validation_data = (x_val,y_val), shuffle=True, callbacks=[model_checkpoint])
+		mcb = My_Callback(x_val,y_val)
+		prev_val_acc = 0
 
-			# print('predict test data')
-			# val_score = model.evaluate(x_val,y_val, batch_size=52, verbose=1)
-			#
-			# print val_score
+		if os.path.exists('unet.hdf5'):
+			model.load_weights('unet.hdf5')
+			print("got weights")
+		# model.fit(x_train, y_train, batch_size=16, epochs=5, verbose=1, shuffle=True, callbacks=[model_checkpoint])
+		model.fit(x_train, y_train, batch_size=16, epochs=100, verbose=1, shuffle=True, callbacks=[mcb])
+
+		print('Saving model..')
+		model.save('unet.hdf5')
+
+
 			# np.save('imgs_mask_test.npy', imgs_mask_test)
 
-			print('!!!!!!!!!!!!! Calculating mean IoU !!!!!!!!!!!!')
-			P = model.predict(x_val, verbose = 0)
+
+
+
+	# def predict(self):
+	# 	print("loading data")
+	# 	x_train, y_train, x_val, y_val = self.load_data()
+	# 	print("loading data done")
+	# 	model = self.get_unet()
+	# 	print("got unet")
+	# 	model.load_weights('unet.hdf5')
+	# 	print("loaded weights")
+	# 	predictions = model.predict(x_val, batch_size = 1)
+	# 	return predictions
+
+class My_Callback(callbacks.Callback):
+	def __init__(self,x_val, y_val):
+		self.X_val = x_val
+		self.Y_val = y_val
+		self.num_epochs = 0
+		self.calc_epoch = 5
+
+	def on_epoch_end(self, epoch, logs={}):
+		if self.num_epochs%self.calc_epoch == 0:
+			print('predict test data')
+			val_score = self.model.evaluate(self.X_val,self.Y_val, batch_size=52, verbose=1)
+			print val_score
+
+			P = self.model.predict(self.X_val, verbose = 0)
 			indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
 			count = 0
 
@@ -273,18 +307,8 @@ class myUnet(object):
 				IoU_sum = IoU_sum +  IoU(gt,seg_pred)
 				# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
 			print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
+		self.num_epochs += 1
 
-
-	# def predict(self):
-	# 	print("loading data")
-	# 	x_train, y_train, x_val, y_val = self.load_data()
-	# 	print("loading data done")
-	# 	model = self.get_unet()
-	# 	print("got unet")
-	# 	model.load_weights('unet.hdf5')
-	# 	print("loaded weights")
-	# 	predictions = model.predict(x_val, batch_size = 1)
-	# 	return predictions
 
 
 def prepare_seg_path(original_path):
