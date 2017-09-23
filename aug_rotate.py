@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[1]:
@@ -50,7 +49,7 @@ def rotate_dataset(points_data_paths, points_labels_path):
             aug_count+=1
 
             #<train/valid>_data/class_id/aug_<num>
-            print(temp_path1[0]+"/"+temp_path1[1]+"/"+temp_path1[2].split(".")[0]+"aug"+str(aug_count)+".pts")
+            #print(temp_path1[0]+"/"+temp_path1[1]+"/"+temp_path1[2].split(".")[0]+"aug"+str(aug_count)+".pts")
             np.savetxt(temp_path1[0]+"/"+temp_path1[1]+"/"+temp_path1[2].split(".")[0]+"aug"+str(aug_count)+".pts", pts)
             copyfile(each_labels_path, temp_path2[0]+"/"+temp_path2[1]+"/"+temp_path2[2].split(".")[0]+"aug"+str(aug_count)+".seg")
 
