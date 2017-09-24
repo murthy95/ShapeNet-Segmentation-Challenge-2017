@@ -1,0 +1,12 @@
+
+9/9/2017
+
+Prevent overfitting using dropout in intial conv layer.
+
+try different filter size say 5x5 and may be use somethign like residual archtecture.
+
+pre train the werights with classification in downsampling part and use it in segmentation
+
+Data augmentation ******
+
+Note: need to check state of the art for segmentation IoU
