@@ -24,7 +24,8 @@ class myUnet(object):
 	def load_data(self):
 		x_data = './data/prepared/Motorbike_03790512_X_train.npy'
 		y_data = './data/prepared/Motorbike_03790512_y_train.npy'
-		x_train = np.load(x_data)
+		x_train = np.load(x_data)[:,:,:,1]
+		x_train = x_train.reshape((-1,2048,3,1))
 		print "x_train shape", x_train.shape
 		y_train = np.load(y_data)
 		yt_shape = y_train.shape
@@ -35,7 +36,8 @@ class myUnet(object):
 
 		x_val = './data/prepared/Motorbike_03790512_X_val.npy'
 		y_val = './data/prepared/Motorbike_03790512_y_val.npy'
-		x_val = np.load(x_val)
+		x_val = np.load(x_val)[:,:,:,1]
+		x_val = x_val.reshape((-1,2048,3,1))
 		y_val = np.load(y_val)
 		yv_shape = y_val.shape
 		y_val = utils.to_categorical(y_val - 1,6)
@@ -45,14 +47,14 @@ class myUnet(object):
 	def get_unet(self):
 
 
-		inputs = Input((self.n_pts, 3,2))
+		inputs = Input((self.n_pts, 3,1))
 		up_crop = Cropping2D(cropping=((0,1858),(0,0)))(inputs)
 		up_shape = up_crop.shape
-		up_crop = Lambda(lambda x: K.reverse(x,axes=1),output_shape=(190,3,2))(up_crop)
+		up_crop = Lambda(lambda x: K.reverse(x,axes=1),output_shape=(190,3,1))(up_crop)
 		print "up_crop shape:",up_crop.shape
 		down_crop = Cropping2D(cropping=((1858,0),(0,0)))(inputs)
 		down_shape = down_crop.shape
-		down_crop = Lambda(lambda x: K.reverse(x,axes=1),output_shape=(190,3,2))(down_crop)
+		down_crop = Lambda(lambda x: K.reverse(x,axes=1),output_shape=(190,3,1))(down_crop)
 		print "down_crop shape:",down_crop.shape
 		inputs_mirrored = merge([inputs,down_crop], mode = 'concat', concat_axis = 1)
 		print "inputs shape:",inputs_mirrored.shape
@@ -242,14 +244,14 @@ class myUnet(object):
 		mcb = My_Callback(x_val,y_val)
 		prev_val_acc = 0
 
-		if os.path.exists('unet.hdf5'):
-			model.load_weights('unet.hdf5')
+		if os.path.exists('unet_ch1.hdf5'):
+			model.load_weights('unet_ch1.hdf5')
 			print("got weights")
 		# model.fit(x_train, y_train, batch_size=16, epochs=5, verbose=1, shuffle=True, callbacks=[model_checkpoint])
 		model.fit(x_train, y_train, batch_size=16, epochs=100, verbose=1, shuffle=True, callbacks=[mcb])
 
 		print('Saving model..')
-		model.save('unet.hdf5')
+		model.save('unet_ch1.hdf5')
 
 
 			# np.save('imgs_mask_test.npy', imgs_mask_test)
@@ -307,7 +309,7 @@ class My_Callback(callbacks.Callback):
 				IoU_sum = IoU_sum +  IoU(gt,seg_pred)
 				# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
 			print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
-		self.num_epochs += 1
+		self.num_epochs += 1.
 
 
 
