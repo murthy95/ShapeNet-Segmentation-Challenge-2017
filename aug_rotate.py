@@ -35,6 +35,7 @@ def rotate(points, alpha, beta, gamma):
 def rotate_dataset(points_data_paths, points_labels_path):
     for each_data_path, each_labels_path in zip(points_data_paths, points_labels_path):
         aug_count = 0
+        print(each_data_path)
         pts = np.loadtxt(each_data_path)
         temp_path1 = each_data_path.split("/")
         temp_path2 = each_labels_path.split("/")
@@ -50,10 +51,12 @@ def rotate_dataset(points_data_paths, points_labels_path):
 
             #<train/valid>_data/class_id/aug_<num>
             #print(temp_path1[0]+"/"+temp_path1[1]+"/"+temp_path1[2].split(".")[0]+"aug"+str(aug_count)+".pts")
-            np.savetxt(temp_path1[0]+"/"+temp_path1[1]+"/"+temp_path1[2].split(".")[0]+"aug"+str(aug_count)+".pts", pts)
-            copyfile(each_labels_path, temp_path2[0]+"/"+temp_path2[1]+"/"+temp_path2[2].split(".")[0]+"aug"+str(aug_count)+".seg")
+            np.savetxt(temp_path1[0]+"/"+temp_path1[1]+"/"+temp_path1[2]+"/"+temp_path1[3].split(".")[0]+"aug"+str(aug_count)+".pts", pts)
+            copyfile(each_labels_path, temp_path2[0]+"/"+temp_path2[1]+"/"+temp_path2[2]+"/"+temp_path2[3].split(".")[0]+"aug"+str(aug_count)+".seg")
 
-
+points_xyz = list(glob.iglob("data/temp_1/*/*.pts", recursive=True))
+points_label = list(glob.iglob("data/temp_2/*/*.seg", recursive=True))
+rotate_dataset(points_xyz, points_label)
 '''
 Usecase:
 

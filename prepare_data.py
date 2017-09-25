@@ -83,7 +83,7 @@ ind_map_fnames = ["ind_map_train.npy","ind_map_val.npy","ind_map_test.npy"]
 label_fnames = ["y_train.npy","y_val.npy"]
 print("Processing data..")
 
-for i in range(2):  #iterating over train, val
+for i in range(1):  #iterating over train, val
 
     main_data_folder = data_folders[i]
     main_label_folder = label_folders[i]
@@ -127,21 +127,21 @@ for i in range(2):  #iterating over train, val
 
 
 # Processing the test set (only points)
-print("Processing test data...")
-test_folder = data_folders[2]
-data_classes = sorted(glob.glob(test_folder))
-for data_class in data_classes:
-    print(data_class)
-    model_files = sorted(glob.glob(data_class + '/*'))
-    data = []
-    ind_maps = []
-    for model_file in model_files:
-        print(model_file)
-        pts = read_pts(model_file)
-        kd_leaves,kd_inds = create_kd_tree(pts)
-        kdl,kdi = augment_kd(kd_leaves,kd_inds)
-        for l,i in zip(kdl,kdi):
-            data.append(l)
-            ind_maps.append(i)
-    np.save(get_fname(data_class,data_fnames[2]),data)
-    np.save(get_fname(data_class,ind_map_fnames[2]),ind_maps)
+# print("Processing test data...")
+# test_folder = data_folders[2]
+# data_classes = sorted(glob.glob(test_folder))
+# for data_class in data_classes:
+#     print(data_class)
+#     model_files = sorted(glob.glob(data_class + '/*'))
+#     data = []
+#     ind_maps = []
+#     for model_file in model_files:
+#         print(model_file)
+#         pts = read_pts(model_file)
+#         kd_leaves,kd_inds = create_kd_tree(pts)
+#         kdl,kdi = augment_kd(kd_leaves,kd_inds)
+#         for l,i in zip(kdl,kdi):
+#             data.append(l)
+#             ind_maps.append(i)
+#     np.save(get_fname(data_class,data_fnames[2]),data)
+#     np.save(get_fname(data_class,ind_map_fnames[2]),ind_maps)
