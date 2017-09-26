@@ -15,6 +15,15 @@ import glob
 import tensorflow as tf
 import os
 
+
+def custom_loss(y_true, y_pred):
+	loss_iou=0
+	for i in y_true.shape[0]:
+		for j in range(4):
+			dot = np.dot(y_true[i,:,j],y_pred[i,:,j])
+			loss_iou += dot/(np.sum(y_true[i,:,j])+np.sum(y_pred[i,:,j])+dot)
+	return loss_iou
+
 class myUnet(object):
 
 	def __init__(self, n_pts = 2048):
