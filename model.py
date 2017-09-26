@@ -311,8 +311,6 @@ class My_Callback(callbacks.Callback):
 			print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
 		self.num_epochs += 1.
 
-
-
 def prepare_seg_path(original_path):
 	path_segs = original_path.split('.')
 	path_segs = path_segs[1].split('/')
