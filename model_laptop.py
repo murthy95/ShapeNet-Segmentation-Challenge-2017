@@ -2,7 +2,8 @@ import numpy as np
 from keras import callbacks
 from keras import utils
 from keras.models import *
-from keras.layers import Input, merge, Conv2D, Conv2DTranspose, MaxPooling2D, AveragePooling2D, UpSampling2D, Dropout, Cropping2D, Activation
+
+from keras.layers import Input, merge, Conv2D, MaxPooling2D, AveragePooling2D, UpSampling2D, Dropout, Cropping2D, Activation,Conv2DTranspose
 from keras.layers.core import Reshape, Lambda
 from keras.optimizers import *
 from keras.callbacks import ModelCheckpoint, LearningRateScheduler
@@ -15,46 +16,45 @@ import glob
 import tensorflow as tf
 import os
 
+NUM_PARTS = 4
+CATEGORY_NAME = 'Airplane'
+CATEGORY_ID = '02691156'
+X_TRAIN_PATH = './data/prepared_old_train/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_X_train.npy'
+Y_TRAIN_PATH = './data/prepared_old_train/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_y_train.npy'
 
-def custom_loss(y_true, y_pred):
-	loss_iou=0
-	for i in y_true.shape[0]:
-		for j in range(4):
-			dot = np.dot(y_true[i,:,j],y_pred[i,:,j])
-			loss_iou += dot/(np.sum(y_true[i,:,j])+np.sum(y_pred[i,:,j])+dot)
-	return loss_iou
+X_VAL_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_X_val.npy'
+Y_VAL_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_y_val.npy'
+IND_MAP_VAL_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_ind_map_val.npy'
+LABEL_VAL_PATH = './data/val_label/' + CATEGORY_ID + '/*'
 
 class myUnet(object):
 
 	def __init__(self, n_pts = 2048):
-
+		self.save_file = 'unet_ch1_' + CATEGORY_NAME + '.hdf5'
+		self.num_parts = NUM_PARTS
 		self.n_pts = n_pts
+		self.model = self.get_unet()
 
 	def load_data(self):
-		x_data = './data/prepared/Motorbike_03790512_X_train.npy'
-		y_data = './data/prepared/Motorbike_03790512_y_train.npy'
-		x_train = np.load(x_data)[:,:,:,1]
+		x_train = np.load(X_TRAIN_PATH)[:,:,:,1]
 		x_train = x_train.reshape((-1,2048,3,1))
 		print "x_train shape", x_train.shape
-		y_train = np.load(y_data)
+		y_train = np.load(Y_TRAIN_PATH)
 		yt_shape = y_train.shape
 		print "y_train shape", y_train.shape
-		y_train = utils.to_categorical(y_train - 1,6)
-		y_train = np.reshape(y_train,(yt_shape[0],yt_shape[1],6))
+		y_train = utils.to_categorical(y_train - 1,self.num_parts)
+		y_train = np.reshape(y_train,(yt_shape[0],yt_shape[1],self.num_parts))
 		print "y_train shape", y_train.shape
 
-		x_val = './data/prepared/Motorbike_03790512_X_val.npy'
-		y_val = './data/prepared/Motorbike_03790512_y_val.npy'
-		x_val = np.load(x_val)[:,:,:,1]
+		x_val = np.load(X_VAL_PATH)[:,:,:,1]
 		x_val = x_val.reshape((-1,2048,3,1))
-		y_val = np.load(y_val)
+		y_val = np.load(Y_VAL_PATH)
 		yv_shape = y_val.shape
-		y_val = utils.to_categorical(y_val - 1,6)
-		y_val = np.reshape(y_val,(yv_shape[0],yv_shape[1],6))
+		y_val = utils.to_categorical(y_val - 1,self.num_parts)
+		y_val = np.reshape(y_val,(yv_shape[0],yv_shape[1],self.num_parts))
 		return x_train, y_train, x_val, y_val
 
 	def get_unet(self):
-
 
 		inputs = Input((self.n_pts, 3,1))
 		up_crop = Cropping2D(cropping=((0,1858),(0,0)))(inputs)
@@ -224,32 +224,31 @@ class myUnet(object):
 		print "conv11 shape:",conv11.shape
 		conv11 = BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001)(conv11)
 		conv11 = Activation('relu')(conv11)
-		conv11 = Conv2D(6, (3,1), padding = 'valid', kernel_initializer = 'glorot_normal')(conv11)
+		conv11 = Conv2D(self.num_parts, (3,1), padding = 'valid', kernel_initializer = 'glorot_normal')(conv11)
 		conv11 = BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001)(conv11)
 		print "conv11 shape:",conv11.shape
-		conv11 = Reshape((2048, 6))(conv11)
+		conv11 = Reshape((2048, self.num_parts))(conv11)
 		print "conv11 shape:",conv11.shape
-		conv11 = Lambda(self.softmax_,output_shape=(2048,6))(conv11)
+		conv11 = Lambda(self.softmax_,output_shape=(2048,self.num_parts))(conv11)
 		print "conv11 shape:",conv11.shape
 		# conv11 = up_crop = Lambda(lambda x: K.argmax(x,axis=2),output_shape=(2048,1))(conv11)
 
 		model = Model(input = inputs, output = conv11)
 
 		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy'])
+		model.summary()
 
 		return model
 
 	def softmax_(self,x):
 		return softmax(x,axis=2)
 
-
-
 	def train(self):
 
 		print("loading data")
 		x_train, y_train, x_val, y_val = self.load_data()
 		print("loading data done")
-		model = self.get_unet()
+
 
 
 		# model_checkpoint = ModelCheckpoint('unet.hdf5', monitor='loss',verbose=1, save_best_only=True)
@@ -258,14 +257,14 @@ class myUnet(object):
 		mcb = My_Callback(x_val,y_val)
 		prev_val_acc = 0
 
-		if os.path.exists('unet_ch1.hdf5'):
-			model.load_weights('unet_ch1.hdf5')
+		if os.path.exists(self.save_file):
+			self.model.load_weights(self.save_file)
 			print("got weights")
 		# model.fit(x_train, y_train, batch_size=16, epochs=5, verbose=1, shuffle=True, callbacks=[model_checkpoint])
-		model.fit(x_train, y_train, batch_size=16, epochs=100, verbose=1, shuffle=True, callbacks=[mcb])
+		self.model.fit(x_train, y_train, batch_size=16, epochs=100, verbose=1, shuffle=True, callbacks=[mcb])
 
 		print('Saving model..')
-		model.save('unet_ch1.hdf5')
+		self.model.save(self.save_file)
 
 
 			# np.save('imgs_mask_test.npy', imgs_mask_test)
@@ -289,7 +288,7 @@ class My_Callback(callbacks.Callback):
 		self.X_val = x_val
 		self.Y_val = y_val
 		self.num_epochs = 0
-		self.calc_epoch = 5
+		self.calc_epoch = 1
 
 	def on_epoch_end(self, epoch, logs={}):
 		if self.num_epochs%self.calc_epoch == 0:
@@ -298,17 +297,17 @@ class My_Callback(callbacks.Callback):
 			print val_score
 
 			P = self.model.predict(self.X_val, verbose = 0)
-			indices = np.load('./data/prepared/Motorbike_03790512_ind_map_val.npy')
+			indices = np.load(IND_MAP_VAL_PATH)
 			count = 0
 
-			flists = sorted(glob.glob('./data/val_label/03790512/*'))
+			flists = sorted(glob.glob(LABEL_VAL_PATH))
 			IoU_sum = 0
 			for val_file in flists:
 				# print(val_file)
 				with open(val_file,'r') as myfile:
 					gt = np.loadtxt(myfile.readlines())
 				num_pts = len(gt)
-				seg_data = np.zeros((num_pts,6))
+				seg_data = np.zeros((num_pts,NUM_PARTS))
 				num_exs = 1
 				if num_pts>2048:
 					num_exs = 2
@@ -360,6 +359,12 @@ def IoU(gt_seg,pred_seg):
 
 if __name__ == '__main__':
 	myunet = myUnet()
+	# trainable_count = int(np.sum([K.count_params(p) for p in set(model.trainable_weights)]))
+	# non_trainable_count = int(np.sum([K.count_params(p) for p in set(model.non_trainable_weights)]))
+	#
+	# print('Total params: {:,}'.format(trainable_count + non_trainable_count))
+	# print('Trainable params: {:,}'.format(trainable_count))
+	# print('Non-trainable params: {:,}'.format(non_trainable_count))
 	myunet.train()
 
 
