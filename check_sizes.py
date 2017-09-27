@@ -4,6 +4,8 @@ from kd_helpers import read_labels
 
 # Checking the number of points in each model
 
+max_pts = 0
+
 for main_folder in ["./data/train_data/*","./data/val_data/*","./data/test_data/*"]:
     print(main_folder)
     folders = glob.glob(main_folder)
@@ -14,12 +16,14 @@ for main_folder in ["./data/train_data/*","./data/val_data/*","./data/test_data/
     for model_file in model_files:
         with open(model_file,'r') as myfile:
             num_pts = len(myfile.readlines())
+            if num_pts>max_pts:
+                max_pts = num_pts
             if num_pts > 4096 or num_pts <= 512:
                 print(num_pts)
                 print("Out of range")
     print('Total models : '),
     print(len(model_files))
-
+print("Highest number of points: " + str(max_pts))
 
 # Checking the number of parts in each class
 

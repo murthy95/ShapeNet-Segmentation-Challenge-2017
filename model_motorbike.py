@@ -16,11 +16,11 @@ import glob
 import tensorflow as tf
 import os
 
-NUM_PARTS = 4
-CATEGORY_NAME = 'Airplane'
-CATEGORY_ID = '02691156'
-X_TRAIN_PATH = './data/prepared_old_train/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_X_train.npy'
-Y_TRAIN_PATH = './data/prepared_old_train/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_y_train.npy'
+NUM_PARTS = 6
+CATEGORY_NAME = 'Motorbike'
+CATEGORY_ID = '03790512'
+X_TRAIN_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_X_train.npy'
+Y_TRAIN_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_y_train.npy'
 
 X_VAL_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_X_val.npy'
 Y_VAL_PATH = './data/prepared/' + CATEGORY_NAME + '_' + CATEGORY_ID + '_y_val.npy'
@@ -246,7 +246,7 @@ class myUnet(object):
 
 		model = Model(input = inputs, output = conv11)
 
-		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = IoU_loss, metrics = ['accuracy'])
+		model.compile(optimizer = Adam(lr = 1e-4, decay = 0.0001), loss = 'categorical_crossentropy', metrics = ['accuracy'])
 		model.summary()
 
 		return model
@@ -296,7 +296,7 @@ class My_Callback(callbacks.Callback):
 		self.X_val = x_val
 		self.Y_val = y_val
 		self.num_epochs = 0
-		self.calc_epoch = 1
+		self.calc_epoch = 5
 
 	def on_epoch_end(self, epoch, logs={}):
 		if self.num_epochs%self.calc_epoch == 0:
