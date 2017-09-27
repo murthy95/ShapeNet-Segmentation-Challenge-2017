@@ -145,34 +145,36 @@ class My_Callback(callbacks.Callback):
             val_score = self.model.evaluate(self.X_val,self.Y_val, batch_size=52, verbose=1)
             print val_score
 
-            # P = self.model.predict(self.X_val, verbose = 0)
-            # P = P.reshape((-1,2048,NUM_PARTS))
-            # # print(P.shape)
-            # indices = np.load(IND_MAP_VAL_PATH)
-            # count = 0
-            #
-            # flists = sorted(glob.glob(LABEL_VAL_PATH))
-            # IoU_sum = 0
-            # for val_file in flists:
-            # 	# print(val_file)
-            # 	with open(val_file,'r') as myfile:
-            # 		gt = np.loadtxt(myfile.readlines())
-            # 	num_pts = len(gt)
-            # 	seg_data = np.zeros((num_pts,NUM_PARTS))
-            # 	num_exs = 1
-            # 	if num_pts>2048:
-            # 		num_exs = 2
-            # 	for i in range(num_exs):
-            # 		ind = indices[count]
-            # 		prediction = P[count]
-            # 		for j in range(2048):
-            # 			seg_data[ind[j]] += prediction[j]
-            # 		count += 1
-            #
-            # 	seg_pred = np.argmax(seg_data,axis=1) + 1
-            # 	IoU_sum = IoU_sum +  IoU(gt,seg_pred)
-            # 	# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
-            # print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
+            P = self.model.predict(self.X_val, verbose = 0)
+            indices = np.load(IND_MAP_VAL_PATH)
+            count = 0
+
+            flists = sorted(glob.glob(LABEL_VAL_PATH))
+            IoU_sum = 0
+            Acc_sum = 0
+            for val_file in flists:
+            	# print(val_file)
+            	with open(val_file,'r') as myfile:
+            		gt = np.loadtxt(myfile.readlines())
+            	num_pts = len(gt)
+            	seg_data = np.zeros((num_pts,1,NUM_PARTS))
+            	num_exs = 1
+            	if num_pts>2048:
+            		num_exs = 2
+            	for i in range(num_exs):
+            		ind = indices[count]
+            		prediction = P[count]
+            		for j in range(2048):
+            			seg_data[ind[j]] += prediction[j]
+            		count += 1
+
+            	seg_pred = np.argmax(seg_data,axis=1) + 1
+            	m_iou, m_Acc = IoU(gt,seg_pred)
+            	IoU_sum = IoU_sum + m_iou
+            	Acc_sum += m_Acc
+            	# print('IIIIOOOOOOUUUUU: ' + str(IoU(gt,seg_pred)))
+            print('Mean IoU on val_data: ' + str(IoU_sum/len(flists)))
+            print('Mean acc. on val_data: ' + str(Acc_sum/len(flists)))
         self.num_epochs += 1.
 
 def prepare_seg_path(original_path):
@@ -180,22 +182,14 @@ def prepare_seg_path(original_path):
 	path_segs = path_segs[1].split('/')
 	return './temp_segs/' + path_segs[len(path_segs)-1] + '.seg'
 
-def mean_IoU(y_true, y_pred):
-	y_pred = K.argmax(y_pred,axis=2)
-	y_true = K.argmax(y_true,axis=2)
-	score, up_opt = tf.metrics.mean_iou(K.flatten(y_true), K.flatten(y_pred), 6)
-	K.get_session().run(tf.local_variables_initializer())
-	with tf.control_dependencies([up_opt]):
-		score = tf.identity(score)
-	return score
-
 def IoU(gt_seg,pred_seg):
-	tp, fp, fn = np.zeros(6), np.zeros(6), np.zeros(6)
-	for i in range(6):
+	tp, tn, fp, fn = np.zeros(NUM_PARTS), np.zeros(NUM_PARTS), np.zeros(NUM_PARTS),  np.zeros(NUM_PARTS)
+	for i in range(NUM_PARTS):
 		pred_true_inds = np.where(pred_seg == (i+1))[0]
 		pred_false_inds = np.where(pred_seg != (i+1))[0]
 		# print(gt_seg[pred_true_inds])
 		tp[i] = len(np.where(gt_seg[pred_true_inds] == (i+1) )[0])
+		tn[i] = len(np.where(gt_seg[pred_false_inds] != (i+1) )[0])
 		fp[i] = len(pred_true_inds) - tp[i]
 		fn[i] = len(np.where(gt_seg[pred_false_inds] == (i+1) )[0])
 	# print(tp)
@@ -203,9 +197,11 @@ def IoU(gt_seg,pred_seg):
 	# print(fn)
 	denom = (tp + fp + fn)
 	iou = tp / denom
+
+	# avoiding division by zero
 	iou[np.where(denom == 0)[0]]  = 0
 	# print(iou)
-	return sum(iou)/6
+	return sum(iou)/NUM_PARTS, sum((tp + tn)/(tp + tn + fp + fn))/NUM_PARTS
 
 
 if __name__ == '__main__':
